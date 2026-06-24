@@ -1,0 +1,50 @@
+graph TD
+    subgraph UserInterface["User Interface"]
+        Gradio["Gradio Chat Interface"]
+    end
+
+    subgraph AgentLayer["Agent Orchestration (LangGraph ReAct Loop)"]
+        CheckInput["check_input<br/>(Input Security)"]
+        CallLLM["call_llm<br/>(LLM Inference + Tools)"]
+        ToolNode["ToolNode<br/>(Tool Execution)"]
+        CheckOutput["check_output<br/>(Output Security)"]
+    end
+
+    subgraph MCPClient["MCP Client"]
+        MCP_Client["HTTP Client<br/>(httpx, plain HTTP)"]
+    end
+
+    subgraph MCPEndpoints["MCP Endpoints"]
+        EndpointA["file_read"]
+        EndpointB["file_list"]
+        EndpointC["web_search"]
+        EndpointD["write_file"]
+    end
+
+    subgraph LLM["LLM Server"]
+        LLM_Server["LLM API<br/>(OpenAI-compatible)"]
+    end
+
+    Gradio --> CheckInput
+    CheckInput --> CallLLM
+    CallLLM --> ToolNode
+    ToolNode --> MCP_Client
+    MCP_Client --> EndpointA
+    MCP_Client --> EndpointB
+    MCP_Client --> EndpointC
+    MCP_Client --> EndpointD
+
+    CallLLM --> LLM_Server
+    LLM_Server -.-> CallLLM
+
+    ToolNode --> CallLLM
+    CallLLM --> CheckOutput
+    CheckOutput --> Gradio
+
+    classDef default fill:#fff,stroke:#333,stroke-width:2px
+    classDef layer fill:#e8f4f8,stroke:#2196F3
+    classDef security fill:#fff3e0,stroke:#FF9800
+    classDef infra fill:#e8f5e9,stroke:#4CAF50
+
+    class UserInterface,AgentLayer layer
+    class MCPClient,MCPEndpoints,LLM infra
