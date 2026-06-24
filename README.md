@@ -1,6 +1,6 @@
-# Production-Ready AI Agent Boilerplate
+# LangGraph MCP Agent
 
-> A modular, production-grade template for building secured AI agents with ReAct loop orchestration via LangGraph, MCP client integration, and comprehensive security gates.
+> A modular template for building AI agents with ReAct loop orchestration via LangGraph, MCP client integration, and security gates.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Type: typing](https://img.shields.io/badge/typing-Annotated%20%7C%20TypedDict-green.svg)](https://docs.python.org/3/library/typing.html)
@@ -10,7 +10,7 @@
 
 ## 📖 Description
 
-**AI Agent Boilerplate** is a technology-agnostic framework designed as a reusable template for building **production-grade AI agents**. It implements a complete architecture stack including:
+**LangGraph MCP Agent** is a technology-agnostic framework designed as a reusable template for building AI agents. It implements a complete architecture stack including:
 
 - **ReAct Agent Loop** orchestrated by LangGraph with built-in input/output security gates
 - **MCP Client** implementing JSON-RPC 2.0 over HTTP with SSE response parsing
@@ -57,48 +57,67 @@ This boilerplate is designed to be adapted to any external service or tool-calli
 
 ```mermaid
 graph TD
-    subgraph UI["User Interface"]
-        Gradio["Gradio ChatInterface<br/>port 7860"]
+    subgraph UserInterface["User Interface"]
+        Gradio["Gradio ChatInterface<br/>(server: 0.0.0.0:7860)"]
     end
 
-    subgraph Agent["Agent Orchestration LangGraph StateGraph"]
-        CI["check_input Security Gate In"]
-        LLM["call_llm LLM Tool Binding"]
-        Tools["ToolNode LangChain"]
-        CO["check_output Security Gate Out"]
+    subgraph AgentLayer["Agent Orchestration (LangGraph StateGraph)"]
+        CheckInput["check_input_node<br/>(Input Security Gate)"]
+        CallLLM["call_llm<br/>(LLM Inference + Tool Binding)"]
+        ToolNode["ToolNode<br/>(LangChain ToolNode)"]
+        CheckOutput["check_output_node<br/>(Output Security Gate)"]
     end
 
     subgraph ToolsLayer["Tools Layer"]
-        T1["execute_query"]
-        T2["fetch_resource"]
+        ExecuteQuery["execute_query"]
+        FetchResource["fetch_resource"]
     end
 
-    subgraph Client["MCP Client Singleton"]
-        HTTP["httpx.AsyncClient JSON-RPC 2.0"]
+    subgraph MCPClient["MCP Client (Singleton)"]
+        MCP_Client["httpx.AsyncClient<br/>(JSON-RPC 2.0, SSE)"]
     end
 
-    subgraph External["External Services"]
-        S1["tool_execute"]
-        S2["tool_fetch"]
+    subgraph ExternalServices["External Services"]
+        EndpointQuery["tool_execute"]
+        EndpointFetch["tool_fetch"]
     end
 
-    subgraph LLMSvc["LLM Service"]
-        Model["ChatOpenAI OpenAI-compatible"]
+    subgraph LLM["LLM Server"]
+        LLM_Server["ChatOpenAI<br/>(OpenAI-compatible API)"]
     end
 
-    UI -->|"user_message"| CI
-    CI --> LLM
-    LLM -->|"tool_calls"| Tools
-    Tools -->|"results"| LLM
-    LLM -->|"final"| CO
-    CO -->|"response"| UI
+    %% Main flow
+    Gradio -->|"user_message"| CheckInput
+    CheckInput --> CallLLM
+    CallLLM -->|"has tool_calls"| ToolNode
+    ToolNode -->|"results"| CallLLM
+    CallLLM -->|"no tool_calls"| CheckOutput
+    CheckOutput -->|"final_response"| Gradio
 
-    Tools --> HTTP
-    HTTP --> S1
-    HTTP --> S2
+    %% Tool to MCP Client
+    ToolNode --> MCP_Client
+    MCP_Client --> EndpointQuery
+    MCP_Client --> EndpointFetch
 
-    LLM --> Model
-    Model -.|"response"| LLM
+    %% LLM
+    CallLLM --> LLM_Server
+    LLM_Server -.->|"response"| CallLLM
+
+    %% Security layer
+    CheckInput -.->|"check_input"| SecurityIn["Security: SecurityResult"]
+    CheckOutput -.->|"check_output"| SecurityOut["Security: SecurityResult"]
+
+    %% Styles
+    classDef default fill:#fff,stroke:#333,stroke-width:2px
+    classDef layer fill:#e8f4f8,stroke:#2196F3
+    classDef security fill:#fff3e0,stroke:#FF9800
+    classDef infra fill:#e8f5e9,stroke:#4CAF50
+    classDef tools fill:#f3e5f5,stroke:#9C27B0
+
+    class UserInterface,AgentLayer layer
+    class MCPClient,ExternalServices,LLM infra
+    class SecurityIn,SecurityOut security
+    class ToolsLayer tools
 ```
 
 ### Technical Stack
@@ -162,9 +181,8 @@ mcp-agent-boilerplate/
 ├── utils/                     # Utility modules
 │   ├── llm.py                 # LLM worker singleton
 │   ├── logger.py              # Logging configuration
-│   ├── mcp_client.py          # Async HTTP client JSON-RPC over HTTP
-│   ├── security.py            # Security scanners SecurityResult
-│   └── preprocessing.py       # Text preprocessing utilities
+│   ├── mcp_client.py          # Async HTTP client — JSON-RPC over HTTP
+│   └── security.py            # Security scanners — SecurityResult dataclass
 │
 ├── tests/                     # Test suite
 │   └── test_security.py       # Security layer unit tests
