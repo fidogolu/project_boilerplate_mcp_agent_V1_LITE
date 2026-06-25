@@ -297,4 +297,3 @@ This project is licensed under the [MIT License](LICENSE.md).
 
 ---
 
-**Built with** ⚡ by [Your Name](https://github.com/your-username)
